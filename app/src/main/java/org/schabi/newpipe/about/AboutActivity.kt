@@ -13,6 +13,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import com.google.android.material.tabs.TabLayoutMediator
 import org.schabi.newpipe.BuildConfig
+import org.schabi.newpipe.BuildTimestamp
 import org.schabi.newpipe.R
 import org.schabi.newpipe.databinding.ActivityAboutBinding
 import org.schabi.newpipe.databinding.FragmentAboutBinding
@@ -69,7 +70,7 @@ class AboutActivity : AppCompatActivity() {
         ): View {
             FragmentAboutBinding.inflate(inflater, container, false).apply {
                 aboutAppVersion.text = BuildConfig.VERSION_NAME
-                aboutAppBuildTime.text = getString(R.string.about_build_time, BuildConfig.BUILD_TIME)
+                aboutAppBuildTime.text = getString(R.string.about_build_time, BuildTimestamp.VALUE)
                 aboutGithubLink.openLink(R.string.github_url)
                 aboutDonationLink.openLink(R.string.donation_url)
                 aboutWebsiteLink.openLink(R.string.website_url)

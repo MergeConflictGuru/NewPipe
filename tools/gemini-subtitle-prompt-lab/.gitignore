@@ -1,0 +1,6 @@
+results/*
+!results/.gitkeep
+work/*
+!work/.gitkeep
+__pycache__/
+.gemini-api-key

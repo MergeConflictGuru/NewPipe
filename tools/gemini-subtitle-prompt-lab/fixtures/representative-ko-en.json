@@ -1,0 +1,102 @@
+{
+  "name": "representative-ko-en",
+  "description": "Starter corpus collected from subtitle alignment failures observed during development.",
+  "sourceLanguage": "Korean",
+  "targetLanguage": "English",
+  "cases": [
+    {
+      "id": "intense-emotions",
+      "source": "감정이 너무 격렬한 아이",
+      "translation": "a child with emotions that are too intense.",
+      "notes": "Must not collapse the complete sentence into one orange mapping.",
+      "expectedPairs": [
+        ["감정", "emotions"],
+        ["너무", "too"],
+        ["격렬한", "intense"],
+        ["아이", "child"]
+      ]
+    },
+    {
+      "id": "hospital-professor",
+      "source": "엄마가 입원한 병원에서 한 교수님을 만나,",
+      "translation": "Yun-jae meets a professor at the hospital where his mother is admitted,",
+      "notes": "Representative reordered Korean-to-English sentence.",
+      "expectedPairs": [
+        ["엄마", "mother"],
+        ["입원한", "admitted"],
+        ["병원", "hospital"],
+        ["교수님", "professor"]
+      ]
+    },
+    {
+      "id": "orphanage-caption",
+      "source": "[곤이를 어릴 적 잃어버리고, 청소년이 된 곤이를 보육원에서 다시 찾음]",
+      "translation": "[Lost Gon when he was young, found him again at an orphanage when he became a teenager]",
+      "notes": "Bracketed explanatory caption. Avoid returning the whole caption as one pair.",
+      "expectedPairs": [
+        ["곤이", "Gon"],
+        ["어릴 적", "when he was young"],
+        ["잃어버리고", "Lost"],
+        ["보육원", "orphanage"],
+        ["다시 찾음", "found him again"],
+        ["청소년", "teenager"]
+      ]
+    },
+    {
+      "id": "orphanage-continuation",
+      "source": "어린 시절 곤이와 이별을 겪고 나서 곤이를 찾다가 결국 나중에 만나게 되는",
+      "translation": "he is someone who finally reunites with Gon after losing him in childhood.",
+      "notes": "Adjacent narrative cue from the same screenshot.",
+      "expectedPairs": [
+        ["어린 시절", "childhood"],
+        ["이별", "losing"],
+        ["결국", "finally"],
+        ["만나게 되는", "reunites"]
+      ]
+    },
+    {
+      "id": "so-much-stuff",
+      "source": "이렇게 뭐가 엄청 많습니다",
+      "translation": "There's so much stuff here",
+      "notes": "Prefer small mappings over a broad phrase.",
+      "expectedPairs": [
+        ["이렇게", "here"],
+        ["뭐가", "stuff"],
+        ["엄청", "so much"]
+      ]
+    },
+    {
+      "id": "emotion-empathy",
+      "source": "그런 감정이나 공감에 대한 부분은",
+      "translation": "those parts about emotion or empathy",
+      "notes": "Short noun concepts surrounded by unmatched words.",
+      "expectedPairs": [
+        ["감정", "emotion"],
+        ["공감", "empathy"]
+      ]
+    },
+    {
+      "id": "family-dying",
+      "source": "가족들이 죽어가는 와중에도 두려움이나 공포를 느끼지 못하는데요",
+      "translation": "Yun-jae does not feel fear or terror even while his family is dying.",
+      "notes": "Several useful atomic mappings in reordered text.",
+      "expectedPairs": [
+        ["가족", "family"],
+        ["죽어가는", "dying"],
+        ["두려움", "fear"],
+        ["공포", "terror"]
+      ]
+    },
+    {
+      "id": "question-emotions",
+      "source": "Q. 감정이란 타고나는가? 배우는 것인가?",
+      "translation": "Q. Are emotions innate? Or are they learned?",
+      "notes": "Punctuation and question fragments should not prevent atomic pairs.",
+      "expectedPairs": [
+        ["감정", "emotions"],
+        ["타고나는", "innate"],
+        ["배우는", "learned"]
+      ]
+    }
+  ]
+}

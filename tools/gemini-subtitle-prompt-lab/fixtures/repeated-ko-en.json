@@ -1,0 +1,99 @@
+{
+  "name": "repeated-ko-en",
+  "description": "Focused Korean-to-English corpus for testing explicit occurrence indexes.",
+  "sourceLanguage": "Korean",
+  "targetLanguage": "English",
+  "cases": [
+    {
+      "id": "repeated-source-and-target",
+      "source": "엄마는 엄마이고 나는 나야",
+      "translation": "Mom is Mom, and I am me.",
+      "expectedPairs": [
+        ["엄마", "Mom"],
+        ["엄마", "Mom"],
+        ["나", "I"],
+        ["나", "me"]
+      ],
+      "expectedAlignments": [
+        {"source": "엄마", "target": "Mom", "sourceOccurrence": 0, "targetOccurrence": 0},
+        {"source": "엄마", "target": "Mom", "sourceOccurrence": 1, "targetOccurrence": 1},
+        {"source": "나", "target": "I", "sourceOccurrence": 0, "targetOccurrence": 0},
+        {"source": "나", "target": "me", "sourceOccurrence": 1, "targetOccurrence": 0}
+      ]
+    },
+    {
+      "id": "collapsed-source-repeat",
+      "source": "공감도 마찬가지로 생각을 통해서 공감이 나오는 거라고 느껴서",
+      "translation": "I feel that empathy also comes through thought.",
+      "expectedPairs": [
+        ["공감", "empathy"],
+        ["공감", "empathy"],
+        ["생각", "thought"],
+        ["느껴서", "I feel"]
+      ],
+      "expectedAlignments": [
+        {"source": "공감", "target": "empathy", "sourceOccurrence": 0, "targetOccurrence": 0},
+        {"source": "공감", "target": "empathy", "sourceOccurrence": 1, "targetOccurrence": 0},
+        {"source": "생각", "target": "thought", "sourceOccurrence": 0, "targetOccurrence": 0},
+        {"source": "느껴서", "target": "I feel", "sourceOccurrence": 0, "targetOccurrence": 0}
+      ]
+    },
+    {
+      "id": "caption-and-body-repeat",
+      "source": "[잔인한 인물]\n그는 잔인한 사람이다",
+      "translation": "[A cruel character]\nHe is a cruel person.",
+      "expectedPairs": [
+        ["잔인한", "cruel"],
+        ["인물", "character"],
+        ["잔인한", "cruel"],
+        ["사람", "person"]
+      ],
+      "expectedAlignments": [
+        {"source": "잔인한", "target": "cruel", "sourceOccurrence": 0, "targetOccurrence": 0},
+        {"source": "인물", "target": "character", "sourceOccurrence": 0, "targetOccurrence": 0},
+        {"source": "잔인한", "target": "cruel", "sourceOccurrence": 1, "targetOccurrence": 1},
+        {"source": "사람", "target": "person", "sourceOccurrence": 0, "targetOccurrence": 0}
+      ]
+    },
+    {
+      "id": "reordered-names",
+      "source": "윤재는 곤이를 만나고, 곤이는 윤재를 만난다",
+      "translation": "Goni meets Yoonjae, and Yoonjae meets Goni.",
+      "expectedPairs": [
+        ["윤재", "Yoonjae"],
+        ["곤이", "Goni"],
+        ["만나고", "meets"],
+        ["곤이", "Goni"],
+        ["윤재", "Yoonjae"],
+        ["만난다", "meets"]
+      ],
+      "expectedAlignments": [
+        {"source": "윤재", "target": "Yoonjae", "sourceOccurrence": 0, "targetOccurrence": 1},
+        {"source": "곤이", "target": "Goni", "sourceOccurrence": 0, "targetOccurrence": 1},
+        {"source": "만나고", "target": "meets", "sourceOccurrence": 0, "targetOccurrence": 1},
+        {"source": "곤이", "target": "Goni", "sourceOccurrence": 1, "targetOccurrence": 0},
+        {"source": "윤재", "target": "Yoonjae", "sourceOccurrence": 1, "targetOccurrence": 0},
+        {"source": "만난다", "target": "meets", "sourceOccurrence": 0, "targetOccurrence": 0}
+      ]
+    },
+    {
+      "id": "repeated-target-with-distinct-source",
+      "source": "공포와 두려움은 서로 다른 종류의 공포다",
+      "translation": "Fear and terror are different kinds of fear.",
+      "expectedPairs": [
+        ["공포", "Fear"],
+        ["두려움", "terror"],
+        ["다른", "different"],
+        ["종류", "kinds"],
+        ["공포", "fear"]
+      ],
+      "expectedAlignments": [
+        {"source": "공포", "target": "Fear", "sourceOccurrence": 0, "targetOccurrence": 0},
+        {"source": "두려움", "target": "terror", "sourceOccurrence": 0, "targetOccurrence": 0},
+        {"source": "다른", "target": "different", "sourceOccurrence": 0, "targetOccurrence": 0},
+        {"source": "종류", "target": "kinds", "sourceOccurrence": 0, "targetOccurrence": 0},
+        {"source": "공포", "target": "fear", "sourceOccurrence": 1, "targetOccurrence": 1}
+      ]
+    }
+  ]
+}

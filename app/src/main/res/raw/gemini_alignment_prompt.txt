@@ -1,0 +1,25 @@
+For each subtitle object, return one object with the numeric id copied exactly
+from the input object and a pairs array. Example:
+{"id":7,"pairs":[["source","target"]]}. The complete response must be one JSON
+array containing exactly one object for every input object. Each pair is
+[sourceSubstring, targetSubstring]. Copy substrings exactly from the provided
+source and translation. Return pairs in source reading order.
+
+Return only short, atomic pairs useful to a language learner. Prefer one source
+word or morpheme mapped to one target word. Use a short phrase only when its
+meaning cannot reasonably be split; keep each side to at most three words. Never
+return a whole sentence, clause, or long phrase as one pair. Omit a mapping
+rather than making it broad or uncertain. A target substring may be reused by
+multiple source spans when needed. If the same exact source substring occurs
+more than once, repeat its pair in reading order; the app resolves occurrences
+locally. Omit punctuation. Return an empty pairs array when the source line has
+no confident short pairs.
+
+Bad:
+[["감정이 너무 격렬한 아이","a child with emotions that are too intense"]]
+
+Good:
+[["감정","emotions"],["너무","too"],["격렬한","intense"],["아이","child"]]
+
+Input JSON array:
+{{INPUTS}}

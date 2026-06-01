@@ -13,7 +13,6 @@ import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import com.google.android.exoplayer2.text.Cue;
 
@@ -104,7 +103,7 @@ public final class GeminiSubtitleRenderer {
         final SpannableStringBuilder targetText =
                 new SpannableStringBuilder(translation.translation);
         final List<ColoredRange> targetColors = colorTargetWords(targetText);
-        colorAlignedSourceWords(sourceText, translation, targetColors);
+        colorAlignedSourceWords(sourceText, targetText, translation, targetColors);
         return sourceText.append('\n').append(targetText);
     }
 
@@ -113,29 +112,67 @@ public final class GeminiSubtitleRenderer {
             @NonNull final SpannableStringBuilder targetText) {
         final List<ColoredRange> coloredRanges = new ArrayList<>();
         final Matcher targetWord = TARGET_WORD.matcher(targetText);
-        int colorIndex = 0;
         while (targetWord.find()) {
-            final int color = RAINBOW_COLORS[colorIndex % RAINBOW_COLORS.length];
-            targetText.setSpan(new ForegroundColorSpan(color), targetWord.start(), targetWord.end(),
+            coloredRanges.add(new ColoredRange(targetWord.start(), targetWord.end(), 0));
+        }
+        for (int i = 0; i < coloredRanges.size(); i++) {
+            final ColoredRange range = coloredRanges.get(i);
+            final int color = rainbowColorAt(i, coloredRanges.size());
+            final ColoredRange coloredRange = new ColoredRange(range.start, range.end, color);
+            targetText.setSpan(coloredRange.span, range.start, range.end,
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            coloredRanges.add(new ColoredRange(targetWord.start(), targetWord.end(), color));
-            colorIndex++;
+            coloredRanges.set(i, coloredRange);
         }
         return coloredRanges;
     }
 
+    static int rainbowColorAt(final int wordIndex, final int wordCount) {
+        if (wordCount <= 1) {
+            return RAINBOW_COLORS[0];
+        }
+        final float palettePosition = (float) wordIndex * (RAINBOW_COLORS.length - 1)
+                / (wordCount - 1);
+        final int lowerIndex = (int) Math.floor(palettePosition);
+        final int upperIndex = Math.min(lowerIndex + 1, RAINBOW_COLORS.length - 1);
+        final float fraction = palettePosition - lowerIndex;
+        return Color.rgb(
+                interpolate(Color.red(RAINBOW_COLORS[lowerIndex]),
+                        Color.red(RAINBOW_COLORS[upperIndex]), fraction),
+                interpolate(Color.green(RAINBOW_COLORS[lowerIndex]),
+                        Color.green(RAINBOW_COLORS[upperIndex]), fraction),
+                interpolate(Color.blue(RAINBOW_COLORS[lowerIndex]),
+                        Color.blue(RAINBOW_COLORS[upperIndex]), fraction));
+    }
+
+    private static int interpolate(final int from, final int to, final float fraction) {
+        return Math.round(from + (to - from) * fraction);
+    }
+
     private static void colorAlignedSourceWords(
             @NonNull final SpannableStringBuilder sourceText,
+            @NonNull final SpannableStringBuilder targetText,
             @NonNull final GeminiSubtitleDataSource.TranslationLine translation,
             @NonNull final List<ColoredRange> targetColors) {
         for (final GeminiSubtitleDataSource.Alignment alignment : translation.alignments) {
             final int targetStart = GeminiSubtitleDataSource.findOccurrence(
                     translation.translation, alignment.target, alignment.targetOccurrence, true);
-            final Integer color = findColor(targetColors, targetStart);
+            final Integer color = findFirstColor(targetColors, targetStart);
             if (color == null) {
                 continue;
             }
+            if (countWords(alignment.source) > 1 || countWords(alignment.target) > 1) {
+                colorTargetRange(targetText, targetColors, targetStart,
+                        targetStart + alignment.target.length(), color);
+            }
+        }
 
+        for (final GeminiSubtitleDataSource.Alignment alignment : translation.alignments) {
+            final int targetStart = GeminiSubtitleDataSource.findOccurrence(
+                    translation.translation, alignment.target, alignment.targetOccurrence, true);
+            final Integer color = findFirstColor(targetColors, targetStart);
+            if (color == null) {
+                continue;
+            }
             final int sourceStart = GeminiSubtitleDataSource.findOccurrence(
                     sourceText.toString(), alignment.source, alignment.sourceOccurrence, false);
             if (sourceStart >= 0) {
@@ -146,9 +183,24 @@ public final class GeminiSubtitleRenderer {
         }
     }
 
-    @Nullable
-    private static Integer findColor(@NonNull final List<ColoredRange> targetColors,
-                                     final int targetStart) {
+    private static void colorTargetRange(@NonNull final SpannableStringBuilder targetText,
+                                         @NonNull final List<ColoredRange> targetColors,
+                                         final int targetStart,
+                                         final int targetEnd,
+                                         final int color) {
+        for (final ColoredRange targetColor : targetColors) {
+            if (targetStart < targetColor.end && targetEnd > targetColor.start) {
+                targetText.removeSpan(targetColor.span);
+                targetColor.color = color;
+                targetColor.span = new ForegroundColorSpan(color);
+                targetText.setSpan(targetColor.span, targetColor.start, targetColor.end,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+        }
+    }
+
+    private static Integer findFirstColor(@NonNull final List<ColoredRange> targetColors,
+                                          final int targetStart) {
         for (final ColoredRange targetColor : targetColors) {
             if (targetStart >= targetColor.start && targetStart < targetColor.end) {
                 return targetColor.color;
@@ -157,15 +209,26 @@ public final class GeminiSubtitleRenderer {
         return null;
     }
 
+    private static int countWords(@NonNull final String text) {
+        int wordCount = 0;
+        final Matcher sourceWord = TARGET_WORD.matcher(text);
+        while (sourceWord.find()) {
+            wordCount++;
+        }
+        return wordCount;
+    }
+
     private static final class ColoredRange {
         private final int start;
         private final int end;
-        private final int color;
+        private int color;
+        private ForegroundColorSpan span;
 
         private ColoredRange(final int start, final int end, final int color) {
             this.start = start;
             this.end = end;
             this.color = color;
+            this.span = new ForegroundColorSpan(color);
         }
     }
 }

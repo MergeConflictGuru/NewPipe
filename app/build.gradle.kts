@@ -4,9 +4,7 @@
  */
 
 import com.android.build.api.dsl.ApplicationExtension
-import java.time.Instant
-import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -17,13 +15,14 @@ plugins {
     alias(libs.plugins.sonarqube)
     checkstyle
 }
-
 val gitWorkingBranch = providers.exec {
     commandLine("git", "rev-parse", "--abbrev-ref", "HEAD")
 }.standardOutput.asText.map { it.trim() }
-val buildTime = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss 'UTC'")
-    .withZone(ZoneOffset.UTC)
-    .format(Instant.now())
+val generatedBuildTimestampDirectory = layout.buildDirectory.dir("generated/source/buildTimestamp")
+val generateBuildTimestamp by tasks.registering(GenerateBuildTimestamp::class) {
+    outputDirectory.set(generatedBuildTimestampDirectory)
+    outputs.upToDateWhen { false }
+}
 
 kotlin {
     jvmToolchain(21)
@@ -43,6 +42,26 @@ configure<ApplicationExtension> {
     }
     namespace = NEWPIPE_APPLICATION_ID_OLD
 
+    signingConfigs {
+        create("release") {
+            val props = Properties()
+            val localPropertiesFile = project.rootProject.file("local.properties")
+            if (localPropertiesFile.exists()) {
+                localPropertiesFile.inputStream().use { stream ->
+                    props.load(stream)
+                }
+            }
+
+            val storeFilePath = props.getProperty("signing.release.storeFile")
+            if (storeFilePath != null) {
+                storeFile = file(storeFilePath)
+                storePassword = props.getProperty("signing.release.storePassword")
+                keyAlias = props.getProperty("signing.release.keyAlias")
+                keyPassword = props.getProperty("signing.release.keyPassword")
+            }
+        }
+    }
+
     defaultConfig {
         applicationId = NEWPIPE_APPLICATION_ID_OLD
         resValue("string", "app_name", "NewPipe")
@@ -57,8 +76,6 @@ configure<ApplicationExtension> {
 
         versionName = NEWPIPE_VERSION_NAME
         System.getProperty("versionNameSuffix")?.let { versionNameSuffix = it }
-        buildConfigField("String", "BUILD_TIME", "\"$buildTime\"")
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -66,24 +83,12 @@ configure<ApplicationExtension> {
         debug {
             isDebuggable = true
 
-            // suffix the app id and the app name with git branch name
-            val defaultBranches = listOf("master", "dev")
-            val workingBranch = gitWorkingBranch.getOrElse("")
-            val normalizedWorkingBranch = workingBranch
-                .replaceFirst("^[^A-Za-z]+".toRegex(), "")
-                .replace("[^0-9A-Za-z]+".toRegex(), "")
-
-            if (normalizedWorkingBranch.isEmpty() || workingBranch in defaultBranches) {
-                // default values when branch name could not be determined or is master or dev
-                applicationIdSuffix = ".debug"
-                resValue("string", "app_name", "NewPipe Debug")
-            } else {
-                applicationIdSuffix = ".debug.$normalizedWorkingBranch"
-                resValue("string", "app_name", "NewPipe $workingBranch")
-            }
+            applicationIdSuffix = ".debug"
+            resValue("string", "app_name", "NewPipe Debug")
         }
 
         release {
+            signingConfig = signingConfigs.getByName("release")
             System.getProperty("packageSuffix")?.let { suffix ->
                 applicationIdSuffix = suffix
                 resValue("string", "app_name", "NewPipe $suffix")
@@ -110,6 +115,9 @@ configure<ApplicationExtension> {
     }
 
     sourceSets {
+        getByName("main") {
+            java.directories.add(generatedBuildTimestampDirectory.get().asFile.path)
+        }
         getByName("androidTest") {
             assets.directories += "$projectDir/schemas"
         }
@@ -136,6 +144,10 @@ configure<ApplicationExtension> {
             )
         }
     }
+}
+
+tasks.named("preBuild") {
+    dependsOn(generateBuildTimestamp)
 }
 
 ksp {

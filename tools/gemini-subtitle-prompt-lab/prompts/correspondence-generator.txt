@@ -1,0 +1,90 @@
+Create a JSON word correspondence map for learning purposes.
+
+Use the provided aligned subtitle cue objects as the data source. For each cue,
+map Korean source words or short phrases to their English counterparts.
+
+Try to MAXIMIZE coverage. Prefer small chunks: ideally single words, or two-word
+phrases when needed. Use three-word chunks only when absolutely necessary. Long
+phrase mappings are usually less useful for learners, so avoid them unless
+there is no cleaner option.
+
+The strings inside each pair must be copied VERBATIM from the source and
+translation fields. This is required because the front end needs to find and
+highlight the exact text. Do not use dictionary forms, lemmatized forms,
+corrected spelling, normalized wording, or implied translations unless that
+exact text appears in the subtitle line.
+
+For every pair:
+
+- The Korean text must be an exact contiguous substring of the source.
+- The English text must be an exact contiguous substring of the translation.
+- Preserve the original spelling, spacing, punctuation, and capitalization.
+- Skip a mapping if either side cannot be found verbatim in its subtitle line.
+
+Do not force unclear mappings. If a Korean word or phrase does not have a clear
+English counterpart, or if mapping it would confuse learners, skip it.
+Otherwise, include as many helpful correspondences as possible.
+
+Before returning each cue, make a coverage pass over both lines. Include every
+clear learner-useful content word, proper name, number, adjective, verb, and
+adverb that can be connected to an exact substring on the other side. Do not
+stop after finding only the most prominent nouns. For example, if a line
+contains clear equivalents for "already", "holding", "covered", or "contains",
+include them too.
+
+Use the smallest helpful exact substrings. Atomic content-word mappings are the
+default. Select a contiguous substring inside an inflected Korean token when
+that yields a cleaner learner mapping: prefer "감정" over "감정이", "병원" over
+"병원에서", and "교수님" over "교수님을". Likewise, prefer a single English
+content word such as "hospital" over "at the hospital" when the smaller target
+preserves the meaning. Prefer several precise pairs over one broad clause pair.
+Skip particles and grammar-only fragments unless they have a clear
+learner-useful counterpart.
+
+As a final audit, scan for unmatched content on both sides after drafting the
+pairs. Add any clear missing mapping instead of replacing an existing pair.
+Pay special attention to nouns and translated adverbs: do not lose an obvious
+noun such as "spoilers" while adding a verb, or an obvious adverb such as
+"already", "finally", "again", or "so many" while adding nearby nouns.
+Explicitly revisit unused core nouns, interrogatives such as "who", and
+temporal adverbs such as "later". If a clear exact counterpart remains in an
+unused span on the other side, add it.
+
+Every pair must be a genuine semantic correspondence, not merely two nearby
+substrings. Korean and English often reorder ideas. Check the meaning of each
+pair independently after drafting it. Remove a pair if one side expresses a
+different connective, action, or detail on the other side. It is better to skip
+an uncertain grammar fragment than to teach a false mapping.
+
+Do not return overlapping mappings. Each piece of source text and each piece of
+translation text should belong to at most one pair. Never reuse an English
+substring or part of it for a second Korean phrase. If two draft pairs overlap,
+keep the smaller accurate learner mapping or the mapping with the clearer
+meaning and discard the other one. Exception: when the requested output format
+includes occurrence indexes and repeated source words clearly collapse into
+one translated occurrence, reuse that target occurrence intentionally and set
+the occurrence indexes explicitly.
+
+Repeated text in distinct places is not overlap. When a source or translation
+substring appears more than once, return each clear correspondence separately
+in reading order. The consumer will assign ordinary repeated occurrences
+deterministically. Overlap refers to concrete character ranges, not substring
+values. Do not treat a word as globally exhausted merely because one occurrence
+has already been mapped. Before skipping repeated text, check whether another
+unused occurrence exists on both sides.
+
+Keep each source and target chunk to at most three whitespace-separated words
+whenever possible. If a draft target has four or more words, make another
+attempt to split it into smaller learner-useful exact substrings. Keep a longer
+chunk only when splitting it would make the correspondence misleading.
+
+Return exactly one object for every input cue. Copy that cue object's numeric
+id into the id field. Put the correspondence pairs in its pairs array.
+
+{{PAIR_FORMAT}}
+
+The complete response must be one JSON array of these objects. Do not return
+markdown or explanatory text.
+
+Input JSON array:
+{{INPUTS}}

@@ -1,0 +1,84 @@
+{
+  "name": "app-live-regression-ko-en",
+  "description": "Regression cues copied from live app logs after the structured tuple rollout.",
+  "sourceLanguage": "Korean",
+  "targetLanguage": "English",
+  "cases": [
+    {
+      "id": "bakery-guardian-caption",
+      "source": "[심 박사 / 윤재가 운영하는 헌책방의 건물주이자, 혼자가 된 윤재의 보호자가 되어준다]\n심 박사라는 분이 있어요 심 박사는 또 윤재의 엄마와 친분을 가지고 있는",
+      "translation": "[Dr. Shim / The landlord of the secondhand bookstore Yun-jae runs, and becomes the guardian of Yun-jae who is left alone] there is Dr. Shim. Dr. Shim is also close with Yun-jae's mother,",
+      "expectedPairs": [
+        ["헌책방", "secondhand bookstore"],
+        ["건물주", "landlord"],
+        ["혼자", "alone"],
+        ["보호자", "guardian"],
+        ["엄마", "mother"],
+        ["친분", "close"]
+      ],
+      "minimumPreflightPairs": 8,
+      "requiredPreflightTargets": {
+        "landlord": 1,
+        "guardian": 1,
+        "mother": 1,
+        "close with": 1
+      }
+    },
+    {
+      "id": "bakery-guardian-continuation",
+      "source": "[같은 건물 2층에 심재영 제과점을 운영 중이며 과거 대학병원 심장외과 의사였다]\n윤재의 법정 대리인인데요",
+      "translation": "[Runs Shim Jae-young Bakery on the 2nd floor of the same building, and was a cardiothoracic surgeon at a university hospital] and is Yun-jae's legal guardian.",
+      "expectedPairs": [
+        ["같은 건물", "same building"],
+        ["2층", "2nd floor"],
+        ["심재영", "Shim Jae-young"],
+        ["제과점", "Bakery"],
+        ["운영", "Runs"],
+        ["대학병원", "university hospital"],
+        ["심장외과", "cardiothoracic surgeon"],
+        ["윤재", "Yun-jae"],
+        ["법정 대리인", "legal guardian"]
+      ],
+      "minimumPreflightPairs": 7,
+      "requiredPreflightTargets": {
+        "building": 1,
+        "2nd floor": 1,
+        "university hospital": 1,
+        "legal guardian": 1
+      }
+    },
+    {
+      "id": "tofu-steak-repeat",
+      "source": "그러면 이 스테이크는 약간 두부 스테이크인가?",
+      "translation": "Then is this steak a tofu steak?",
+      "expectedPairs": [
+        ["두부", "tofu"]
+      ],
+      "minimumPreflightPairs": 4,
+      "requiredPreflightTargets": {
+        "Then": 1,
+        "steak": 2,
+        "tofu": 1
+      }
+    },
+    {
+      "id": "emotion-empathy-caption",
+      "source": "[감정과 공감이란 무엇인지 질문을 던지는 책] 이 책은 감정 그리고 공감에 대해서 성장하는 이야기인 만큼",
+      "translation": "[A book that asks what emotions and empathy are] As this book is a story about growing through emotions and empathy,",
+      "expectedPairs": [
+        ["감정", "emotions"],
+        ["공감", "empathy"],
+        ["책", "book"],
+        ["성장하는", "growing"],
+        ["이야기", "story"]
+      ],
+      "minimumPreflightPairs": 5,
+      "requiredPreflightTargets": {
+        "book": 1,
+        "emotions": 1,
+        "empathy": 1,
+        "story": 1
+      }
+    }
+  ]
+}
