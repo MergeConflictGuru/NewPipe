@@ -29,6 +29,7 @@ import org.schabi.newpipe.extractor.services.youtube.dashmanifestcreators.Youtub
 import org.schabi.newpipe.extractor.services.youtube.dashmanifestcreators.YoutubeProgressiveDashManifestCreator;
 import org.schabi.newpipe.player.datasource.NonUriHlsDataSourceFactory;
 import org.schabi.newpipe.player.datasource.YoutubeHttpDataSource;
+import org.schabi.newpipe.player.subtitle.GeminiSubtitleDataSource;
 
 import java.io.File;
 
@@ -65,6 +66,7 @@ public class PlayerDataSource {
     private static SimpleCache cache;
 
 
+    private final Context context;
     private final int progressiveLoadIntervalBytes;
 
     // Generic Data Source Factories (without or with cache)
@@ -81,6 +83,7 @@ public class PlayerDataSource {
     public PlayerDataSource(final Context context,
                             final TransferListener transferListener) {
 
+        this.context = context.getApplicationContext();
         progressiveLoadIntervalBytes = PlayerHelper.getProgressiveLoadIntervalBytes(context);
 
         // make sure the static cache was created: needed by CacheFactories below
@@ -169,6 +172,10 @@ public class PlayerDataSource {
 
     public SingleSampleMediaSource.Factory getSingleSampleMediaSourceFactory() {
         return new SingleSampleMediaSource.Factory(cacheDataSourceFactory);
+    }
+
+    public SingleSampleMediaSource.Factory getTranslatedSubtitleMediaSourceFactory() {
+        return new SingleSampleMediaSource.Factory(new GeminiSubtitleDataSource.Factory(context));
     }
     //endregion
 

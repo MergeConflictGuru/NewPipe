@@ -4,14 +4,17 @@ import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.text.InputType;
 import android.text.format.DateUtils;
 import android.widget.Toast;
 
+import androidx.preference.EditTextPreference;
 import androidx.preference.ListPreference;
 
 import com.google.android.material.snackbar.Snackbar;
 
 import org.schabi.newpipe.R;
+import org.schabi.newpipe.player.subtitle.GeminiSubtitleSettings;
 import org.schabi.newpipe.util.ListHelper;
 import org.schabi.newpipe.util.PermissionHelper;
 
@@ -27,6 +30,14 @@ public class VideoAudioSettingsFragment extends BasePreferenceFragment {
 
         updateSeekOptions();
         updateResolutionOptions();
+        final EditTextPreference geminiApiKey = requirePreference(
+                R.string.gemini_subtitle_api_key_key);
+        geminiApiKey.setPersistent(false);
+        geminiApiKey.setText(GeminiSubtitleSettings.getApiKey(requireContext()));
+        geminiApiKey.setOnBindEditTextListener(editText -> editText.setInputType(
+                InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD));
+        geminiApiKey.setOnPreferenceChangeListener((preference, newValue) ->
+                GeminiSubtitleSettings.setApiKey(requireContext(), newValue.toString()));
         listener = (sharedPreferences, key) -> {
 
             // on M and above, if user chooses to minimise to popup player on exit

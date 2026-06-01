@@ -77,6 +77,43 @@
         app:singleLineTitle="false"
         app:iconSpaceReserved="false"/>
 
+    <PreferenceCategory
+        android:layout="@layout/settings_category_header_layout"
+        android:title="@string/gemini_subtitle_settings_title"
+        app:singleLineTitle="false"
+        app:iconSpaceReserved="false">
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="@string/gemini_subtitle_translation_enabled_key"
+            android:summary="@string/gemini_subtitle_translation_enabled_summary"
+            android:title="@string/gemini_subtitle_translation_enabled_title"
+            app:singleLineTitle="false"
+            app:iconSpaceReserved="false" />
+
+        <EditTextPreference
+            android:key="@string/gemini_subtitle_api_key_key"
+            android:summary="@string/gemini_subtitle_api_key_summary"
+            android:title="@string/gemini_subtitle_api_key_title"
+            app:iconSpaceReserved="false" />
+
+        <EditTextPreference
+            android:defaultValue="English"
+            android:key="@string/gemini_subtitle_target_language_key"
+            android:title="@string/gemini_subtitle_target_language_title"
+            app:iconSpaceReserved="false"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="@string/gemini_subtitle_show_original_key"
+            android:summary="@string/gemini_subtitle_show_original_summary"
+            android:title="@string/gemini_subtitle_show_original_title"
+            app:singleLineTitle="false"
+            app:iconSpaceReserved="false" />
+
+    </PreferenceCategory>
+
     <PreferenceScreen
         android:fragment="org.schabi.newpipe.settings.ExoPlayerSettingsFragment"
         android:key="@string/exoplayer_settings_key"

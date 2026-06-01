@@ -4,6 +4,9 @@
  */
 
 import com.android.build.api.dsl.ApplicationExtension
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 plugins {
     alias(libs.plugins.android.application)
@@ -18,6 +21,9 @@ plugins {
 val gitWorkingBranch = providers.exec {
     commandLine("git", "rev-parse", "--abbrev-ref", "HEAD")
 }.standardOutput.asText.map { it.trim() }
+val buildTime = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss 'UTC'")
+    .withZone(ZoneOffset.UTC)
+    .format(Instant.now())
 
 kotlin {
     jvmToolchain(21)
@@ -51,6 +57,7 @@ configure<ApplicationExtension> {
 
         versionName = NEWPIPE_VERSION_NAME
         System.getProperty("versionNameSuffix")?.let { versionNameSuffix = it }
+        buildConfigField("String", "BUILD_TIME", "\"$buildTime\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

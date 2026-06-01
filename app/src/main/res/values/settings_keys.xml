@@ -234,6 +234,10 @@
 
     <string name="prefer_original_audio_key">prefer_original_audio</string>
     <string name="prefer_descriptive_audio_key">prefer_descriptive_audio</string>
+    <string name="gemini_subtitle_translation_enabled_key">gemini_subtitle_translation_enabled</string>
+    <string name="gemini_subtitle_api_key_key">gemini_subtitle_api_key</string>
+    <string name="gemini_subtitle_target_language_key">gemini_subtitle_target_language</string>
+    <string name="gemini_subtitle_show_original_key">gemini_subtitle_show_original</string>
     <string name="last_resize_mode">last_resize_mode</string>
 
     <string name="reset_settings">reset_settings</string>

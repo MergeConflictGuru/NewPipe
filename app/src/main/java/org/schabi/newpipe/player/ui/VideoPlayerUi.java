@@ -78,6 +78,7 @@ import org.schabi.newpipe.player.playqueue.PlayQueue;
 import org.schabi.newpipe.player.playqueue.PlayQueueItem;
 import org.schabi.newpipe.player.seekbarpreview.SeekbarPreviewThumbnailHelper;
 import org.schabi.newpipe.player.seekbarpreview.SeekbarPreviewThumbnailHolder;
+import org.schabi.newpipe.player.subtitle.GeminiSubtitleRenderer;
 import org.schabi.newpipe.util.DeviceUtils;
 import org.schabi.newpipe.util.Localization;
 import org.schabi.newpipe.util.NavigationHelper;
@@ -113,6 +114,10 @@ public abstract class VideoPlayerUi extends PlayerUi implements SeekBar.OnSeekBa
 
     protected PlayerBinding binding;
     private final Handler controlsVisibilityHandler = new Handler(Looper.getMainLooper());
+    private final Runnable geminiSubtitleRefreshListener = () ->
+            controlsVisibilityHandler.post(this::refreshGeminiSubtitles);
+    @NonNull
+    private List<Cue> lastSubtitleCues = List.of();
     @Nullable
     private SurfaceHolderCallback surfaceHolderCallback;
     boolean surfaceIsSetup = false;
@@ -158,6 +163,7 @@ public abstract class VideoPlayerUi extends PlayerUi implements SeekBar.OnSeekBa
         super(player);
         binding = playerBinding;
         setupFromView();
+        GeminiSubtitleRenderer.addListener(geminiSubtitleRefreshListener);
     }
 
     public void setupFromView() {
@@ -416,6 +422,7 @@ public abstract class VideoPlayerUi extends PlayerUi implements SeekBar.OnSeekBa
     @Override
     public void destroy() {
         super.destroy();
+        GeminiSubtitleRenderer.removeListener(geminiSubtitleRefreshListener);
         binding.endScreen.setImageDrawable(null);
         deinitPlayerSeekOverlay();
         deinitListeners();
@@ -1419,7 +1426,12 @@ public abstract class VideoPlayerUi extends PlayerUi implements SeekBar.OnSeekBa
     @Override
     public void onCues(@NonNull final List<Cue> cues) {
         super.onCues(cues);
-        binding.subtitleView.setCues(cues);
+        lastSubtitleCues = cues;
+        refreshGeminiSubtitles();
+    }
+
+    private void refreshGeminiSubtitles() {
+        binding.subtitleView.setCues(GeminiSubtitleRenderer.decorate(lastSubtitleCues));
     }
 
     private void setupSubtitleView() {

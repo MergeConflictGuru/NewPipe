@@ -69,6 +69,7 @@ class AboutActivity : AppCompatActivity() {
         ): View {
             FragmentAboutBinding.inflate(inflater, container, false).apply {
                 aboutAppVersion.text = BuildConfig.VERSION_NAME
+                aboutAppBuildTime.text = getString(R.string.about_build_time, BuildConfig.BUILD_TIME)
                 aboutGithubLink.openLink(R.string.github_url)
                 aboutDonationLink.openLink(R.string.donation_url)
                 aboutWebsiteLink.openLink(R.string.website_url)
