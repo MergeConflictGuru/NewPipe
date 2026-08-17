@@ -97,4 +97,16 @@ public class GeminiSubtitleDataSourceTest {
         assertEquals(false, GeminiSubtitleDataSource.isRetryableGeminiRateLimit(
                 "quotaId: GenerateRequestsPerDayPerProjectPerModel-FreeTier"));
     }
+
+    @Test
+    public void dailyQuotaVariantsAreDetected() {
+        assertEquals(true, GeminiSubtitleDataSource.isDailyGeminiQuota(
+                "QuotaFailure: GenerateTokensPerDayPerProjectPerModel-FreeTier"));
+        assertEquals(true, GeminiSubtitleDataSource.isDailyGeminiQuota(
+                "You have exceeded your daily quota"));
+        assertEquals(true, GeminiSubtitleDataSource.isDailyGeminiQuota(
+                "error code: quota_exceeded"));
+        assertEquals(false, GeminiSubtitleDataSource.isDailyGeminiQuota(
+                "quotaId: GenerateRequestsPerMinutePerProjectPerModel-FreeTier"));
+    }
 }

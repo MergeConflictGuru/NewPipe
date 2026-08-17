@@ -37,8 +37,12 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
@@ -60,11 +64,26 @@ public final class GeminiSubtitleDataSource implements DataSource {
     private static final String TAG = GeminiSubtitleDataSource.class.getSimpleName();
     private static final String URI_SCHEME = "newpipe-gemini-subtitle";
     private static final String URI_HOST = "translate";
-    private static final String MODEL = "gemini-3.1-flash-lite";
+    /**
+     * Models are ordered from strongest to lightest. The active model remains in use until its
+     * daily model quota is exhausted or the API reports that it is unavailable.
+     */
+    private static final String[] MODEL_FALLBACK_ORDER = {
+            "gemini-3.7-flash",
+            "gemini-3.6-flash",
+            "gemini-3.5-flash",
+            "gemini-3.5-flash-lite"
+    };
+    private static final boolean[] EXHAUSTED_MODELS =
+            new boolean[MODEL_FALLBACK_ORDER.length];
+    private static final Object MODEL_SELECTION_LOCK = new Object();
+    private static final ZoneId GEMINI_QUOTA_ZONE = ZoneId.of("America/Los_Angeles");
+    @NonNull
+    private static LocalDate modelQuotaDate = LocalDate.now(GEMINI_QUOTA_ZONE);
+    private static int activeModelIndex;
     private static final String CACHE_VERSION = "v17";
-    private static final String GENERATE_CONTENT_URL =
-            "https://generativelanguage.googleapis.com/v1beta/models/"
-                    + MODEL + ":generateContent";
+    private static final String GENERATE_CONTENT_URL_PREFIX =
+            "https://generativelanguage.googleapis.com/v1beta/models/";
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
     private static final int MAX_BATCH_LINES = 100;
     private static final int MAX_BATCH_CHARACTERS = 12_000;
@@ -276,6 +295,25 @@ public final class GeminiSubtitleDataSource implements DataSource {
                                        @NonNull final String apiKey,
                                        @NonNull final String requestType,
                                        @NonNull final JsonObject itemSchema) throws IOException {
+        while (true) {
+            final String model = getActiveGeminiModel();
+            try {
+                return requestJsonArrayWithModel(
+                        prompt, lineCount, apiKey, requestType, itemSchema, model);
+            } catch (final GeminiModelFallbackException e) {
+                if (!advanceToNextGeminiModel(model, e.getMessage())) {
+                    throw e;
+                }
+            }
+        }
+    }
+
+    @NonNull
+    private JsonArray requestJsonArrayWithModel(@NonNull final String prompt, final int lineCount,
+                                                @NonNull final String apiKey,
+                                                @NonNull final String requestType,
+                                                @NonNull final JsonObject itemSchema,
+                                                @NonNull final String model) throws IOException {
         final JsonObject part = new JsonObject();
         part.put("text", prompt);
         final JsonArray parts = new JsonArray();
@@ -292,14 +330,13 @@ public final class GeminiSubtitleDataSource implements DataSource {
         responseSchema.put("items", itemSchema);
         final JsonObject generationConfig = new JsonObject();
         generationConfig.put("responseMimeType", "application/json");
-        generationConfig.put("responseJsonSchema", responseSchema);
-        generationConfig.put("temperature", 0);
+        generationConfig.put("responseSchema", responseSchema);
 
         final JsonObject requestJson = new JsonObject();
         requestJson.put("contents", contents);
         requestJson.put("generationConfig", generationConfig);
         final Request request = new Request.Builder()
-                .url(GENERATE_CONTENT_URL)
+                .url(GENERATE_CONTENT_URL_PREFIX + model + ":generateContent")
                 .header("x-goog-api-key", apiKey)
                 .post(RequestBody.create(JsonWriter.string(requestJson), JSON))
                 .build();
@@ -313,6 +350,14 @@ public final class GeminiSubtitleDataSource implements DataSource {
                     final String errorBody = responseBody == null ? "" : responseBody.string();
                     final String errorMessage = errorBody.isEmpty()
                             ? "" : ": " + summarizeErrorBody(errorBody);
+                    if (isModelUnavailableResponse(response.code(), errorBody)) {
+                        throw new GeminiModelFallbackException(
+                                "Gemini model " + model + " is unavailable" + errorMessage);
+                    }
+                    if (response.code() == 429 && isDailyGeminiQuota(errorBody)) {
+                        throw new GeminiModelFallbackException(
+                                "Gemini model " + model + " daily quota exhausted" + errorMessage);
+                    }
                     if (response.code() == 429 && attempt < MAX_REQUEST_ATTEMPTS
                             && isRetryableGeminiRateLimit(errorBody)) {
                         Log.w(TAG, "Gemini rate limit reached; retrying after delay");
@@ -339,6 +384,80 @@ public final class GeminiSubtitleDataSource implements DataSource {
         throw new IOException("Gemini API request retries exhausted");
     }
 
+    @NonNull
+    private static String getActiveGeminiModel() throws IOException {
+        synchronized (MODEL_SELECTION_LOCK) {
+            resetModelSelectionIfNewQuotaDay();
+            while (activeModelIndex < MODEL_FALLBACK_ORDER.length
+                    && EXHAUSTED_MODELS[activeModelIndex]) {
+                activeModelIndex++;
+            }
+            if (activeModelIndex >= MODEL_FALLBACK_ORDER.length) {
+                throw new IOException("All configured Gemini models have exhausted their quota");
+            }
+            return MODEL_FALLBACK_ORDER[activeModelIndex];
+        }
+    }
+
+    private static boolean advanceToNextGeminiModel(@NonNull final String model,
+                                                     @NonNull final String reason) {
+        synchronized (MODEL_SELECTION_LOCK) {
+            resetModelSelectionIfNewQuotaDay();
+            for (int i = 0; i < MODEL_FALLBACK_ORDER.length; i++) {
+                if (MODEL_FALLBACK_ORDER[i].equals(model)) {
+                    EXHAUSTED_MODELS[i] = true;
+                    if (i == activeModelIndex) {
+                        activeModelIndex++;
+                    }
+                    while (activeModelIndex < MODEL_FALLBACK_ORDER.length
+                            && EXHAUSTED_MODELS[activeModelIndex]) {
+                        activeModelIndex++;
+                    }
+                    if (activeModelIndex < MODEL_FALLBACK_ORDER.length) {
+                        Log.w(TAG, reason + "; falling back to "
+                                + MODEL_FALLBACK_ORDER[activeModelIndex]);
+                        return true;
+                    }
+                    return false;
+                }
+            }
+            return false;
+        }
+    }
+
+    private static void resetModelSelectionIfNewQuotaDay() {
+        final LocalDate currentQuotaDate = LocalDate.now(GEMINI_QUOTA_ZONE);
+        if (!currentQuotaDate.equals(modelQuotaDate)) {
+            Arrays.fill(EXHAUSTED_MODELS, false);
+            activeModelIndex = 0;
+            modelQuotaDate = currentQuotaDate;
+            Log.d(TAG, "Gemini daily quota window changed; resetting model fallback order");
+        }
+    }
+
+    private static boolean isModelUnavailableResponse(final int responseCode,
+                                                       @NonNull final String errorBody) {
+        if (responseCode == 404) {
+            return true;
+        }
+        final String normalized = errorBody.toLowerCase(Locale.US);
+        return (responseCode == 400 || responseCode == 403)
+                && normalized.contains("model")
+                && (normalized.contains("not found")
+                || normalized.contains("not supported")
+                || normalized.contains("unavailable")
+                || normalized.contains("does not have access"));
+    }
+
+    static boolean isDailyGeminiQuota(@NonNull final String errorBody) {
+        final String normalized = errorBody.toLowerCase(Locale.US);
+        return normalized.contains("perday")
+                || normalized.contains("per_day")
+                || normalized.contains("quota_exceeded")
+                || normalized.contains("daily quota")
+                || normalized.contains("daily limit");
+    }
+
     private static void waitForGeminiRequestSlot() throws IOException {
         synchronized (GEMINI_RATE_LIMIT_LOCK) {
             final long waitMillis = nextGeminiRequestAtMillis - System.currentTimeMillis();
@@ -359,7 +478,13 @@ public final class GeminiSubtitleDataSource implements DataSource {
     }
 
     static boolean isRetryableGeminiRateLimit(@NonNull final String errorBody) {
-        return !errorBody.contains("GenerateRequestsPerDay");
+        return !isDailyGeminiQuota(errorBody);
+    }
+
+    private static final class GeminiModelFallbackException extends IOException {
+        private GeminiModelFallbackException(@NonNull final String message) {
+            super(message);
+        }
     }
 
     @NonNull
