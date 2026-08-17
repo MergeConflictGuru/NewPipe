@@ -121,6 +121,77 @@ function Invoke-AdbConnect {
     return ($result.ExitCode -eq 0 -and $combinedOutput -notmatch 'error|cannot connect|failed|refused|unable|aborted')
 }
 
+function Read-TcpPort {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Prompt,
+
+        [int]$DefaultPort = 0
+    )
+
+    while ($true) {
+        $promptWithDefault = if ($DefaultPort -gt 0) {
+            "$Prompt (default $DefaultPort)"
+        } else {
+            $Prompt
+        }
+        $value = Read-Host $promptWithDefault
+
+        if ([string]::IsNullOrWhiteSpace($value) -and $DefaultPort -gt 0) {
+            return $DefaultPort
+        }
+
+        $port = 0
+        if ([int]::TryParse($value, [ref]$port) -and $port -ge 1 -and $port -le 65535) {
+            return $port
+        }
+
+        Write-Host 'Enter a port number from 1 to 65535.' -ForegroundColor Yellow
+    }
+}
+
+function Find-AdbDeviceSerial {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int[]]$Ports
+    )
+
+    foreach ($port in $Ports) {
+        $serial = "${deviceHost}:$port"
+        Write-Host "Trying $serial ..." -ForegroundColor Cyan
+
+        if (Invoke-AdbConnect -Serial $serial) {
+            return $serial
+        }
+    }
+
+    return $null
+}
+
+function Invoke-AdbPair {
+    Write-Step 'Pairing Android device for wireless adb'
+    Write-Host 'On the phone, open Developer options > Wireless debugging > Pair device with pairing code.' -ForegroundColor Yellow
+
+    $pairingPort = Read-TcpPort -Prompt 'Enter the pairing port shown on the phone'
+    $pairingCode = Read-Host 'Enter the pairing code shown on the phone'
+    if ([string]::IsNullOrWhiteSpace($pairingCode)) {
+        throw 'Pairing code was empty.'
+    }
+
+    $pairingSerial = "${deviceHost}:$pairingPort"
+    $pairResult = Invoke-AdbCaptured pair $pairingSerial $pairingCode
+    if ($pairResult.Output) {
+        Write-Host $pairResult.Output
+    }
+
+    $combinedOutput = ($pairResult.Output | ForEach-Object { $_.ToString() }) -join "`n"
+    if ($pairResult.ExitCode -ne 0 -or $combinedOutput -match 'error|failed|unable|refused') {
+        throw "adb pair failed for $pairingSerial with exit code $($pairResult.ExitCode)"
+    }
+
+    Write-Host "Successfully paired with $pairingSerial" -ForegroundColor Green
+}
+
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectDir = Split-Path -Parent $scriptDir
 $localPropertiesPath = Join-Path $projectDir 'local.properties'
@@ -182,6 +253,8 @@ if ($null -eq $apkPath) {
 $maxDeployAttempts = 5
 $deployRetryDelaySeconds = 5
 $serial5555 = "${deviceHost}:5555"
+$script:pairingCompleted = $false
+$script:pairingConnectPort = $null
 
 function Invoke-ConnectAndInstall {
     Write-Step "Connecting with adb from SDK"
@@ -198,15 +271,27 @@ function Invoke-ConnectAndInstall {
         $portsToTry = @($customPort, 5555)
     }
 
-    $deviceSerial = $null
-    foreach ($port in $portsToTry) {
-        $serial = "${deviceHost}:$port"
-        Write-Host "Trying $serial ..." -ForegroundColor Cyan
+    $deviceSerial = Find-AdbDeviceSerial -Ports $portsToTry
 
-        if (Invoke-AdbConnect -Serial $serial) {
-            $deviceSerial = $serial
-            break
+    if ($null -eq $deviceSerial) {
+        if (-not $script:pairingCompleted) {
+            Invoke-AdbPair
+            $script:pairingCompleted = $true
+
+            if ($null -ne $customPort) {
+                $script:pairingConnectPort = $customPort
+            } else {
+                $script:pairingConnectPort = Read-TcpPort `
+                    -Prompt "Enter the phone's Wireless debugging connect port (the IP address & Port value)" `
+                    -DefaultPort 5555
+            }
         }
+
+        $portsToTry = @($script:pairingConnectPort)
+        if ($script:pairingConnectPort -ne 5555) {
+            $portsToTry += 5555
+        }
+        $deviceSerial = Find-AdbDeviceSerial -Ports $portsToTry
     }
 
     if ($null -eq $deviceSerial) {

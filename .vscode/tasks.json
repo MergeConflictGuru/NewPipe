@@ -60,7 +60,7 @@
     {
       "id": "phoneIp",
       "type": "promptString",
-      "description": "Enter the phone's IP address (default 192.168.1.101)",
+      "description": "Enter the phone's IP or IP:connect-port; pairing prompts appear if needed (default 192.168.1.101)",
       "default": "192.168.1.101"
     }
   ]
