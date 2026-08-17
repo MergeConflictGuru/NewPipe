@@ -18,7 +18,8 @@ app/release/
 *.project
 *.settings
 bin/
-.vscode/
+.vscode/*
+!.vscode/tasks.json
 *.code-workspace
 
 # xcode files
