@@ -17,6 +17,7 @@ class BackupFileLocator(context: Context) {
         )
         const val FILE_NAME_SERIALIZED_PREFS = "newpipe.settings"
         const val FILE_NAME_JSON_PREFS = "preferences.json"
+        const val FILE_NAME_GEMINI_API_KEY = "gemini-subtitle-api-key"
     }
 
     val db: Path = context.getDatabasePath(FILE_NAME_DB).toPath()

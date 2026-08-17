@@ -21,11 +21,26 @@ class ImportExportManager(private val fileLocator: BackupFileLocator) {
     }
 
     /**
-     * Exports given [SharedPreferences] to the file in given outputPath.
+     * Exports given [SharedPreferences] and, when supplied, the Gemini API key
+     * to the file in given outputPath.
      * It also creates the file.
      */
     @Throws(Exception::class)
     fun exportDatabase(preferences: SharedPreferences, file: StoredFileHelper) {
+        exportDatabase(preferences, null, file)
+    }
+
+    /**
+     * Exports given [SharedPreferences] and the Gemini API key to the file in given outputPath.
+     * The API key is kept in a separate entry so importing settings can restore it to the private
+     * no-backup file instead of leaving it in SharedPreferences.
+     */
+    @Throws(Exception::class)
+    fun exportDatabase(
+        preferences: SharedPreferences,
+        geminiApiKey: String?,
+        file: StoredFileHelper
+    ) {
         // truncate the file before writing to it, otherwise if the new content is smaller than the
         // previous file size, the file will retain part of the previous content and be corrupted
         ZipOutputStream(SharpOutputStream(file.openAndTruncateStream()).buffered()).use { outZip ->
@@ -54,6 +69,15 @@ class ImportExportManager(private val fileLocator: BackupFileLocator) {
                     .on(byteOutput)
                     .`object`(preferences.all)
                     .done()
+            }
+
+            if (geminiApiKey != null) {
+                ZipHelper.addFileToZip(
+                    outZip,
+                    BackupFileLocator.FILE_NAME_GEMINI_API_KEY
+                ) { byteOutput ->
+                    byteOutput.write(geminiApiKey.toByteArray(Charsets.UTF_8))
+                }
             }
         }
     }
@@ -95,6 +119,26 @@ class ImportExportManager(private val fileLocator: BackupFileLocator) {
 
     fun exportHasJsonPrefs(zipFile: StoredFileHelper): Boolean {
         return ZipHelper.zipContainsFile(zipFile, BackupFileLocator.FILE_NAME_JSON_PREFS)
+    }
+
+    fun exportHasGeminiApiKey(zipFile: StoredFileHelper): Boolean {
+        return ZipHelper.zipContainsFile(zipFile, BackupFileLocator.FILE_NAME_GEMINI_API_KEY)
+    }
+
+    /**
+     * Reads the Gemini API key from an export. A null result means that this is an older export
+     * that did not contain the key.
+     */
+    @Throws(IOException::class)
+    fun loadGeminiApiKey(zipFile: StoredFileHelper): String? {
+        var apiKey: String? = null
+        val fileExists = ZipHelper.extractFileFromZip(
+            zipFile,
+            BackupFileLocator.FILE_NAME_GEMINI_API_KEY
+        ) { input ->
+            apiKey = input.readBytes().toString(Charsets.UTF_8)
+        }
+        return if (fileExists) apiKey else null
     }
 
     /**

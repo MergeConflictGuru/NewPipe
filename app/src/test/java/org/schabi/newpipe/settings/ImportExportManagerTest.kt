@@ -57,17 +57,22 @@ class ImportExportManagerTest {
         `when`(fileLocator.db).thenReturn(db)
 
         val expectedPreferences = mapOf("such pref" to "much wow")
+        val expectedGeminiApiKey = "gemini-api-key"
         val sharedPreferences =
             Mockito.mock(SharedPreferences::class.java, withSettings().stubOnly())
         `when`(sharedPreferences.all).thenReturn(expectedPreferences)
 
         val output = File.createTempFile("newpipe_", "")
         `when`(storedFileHelper.openAndTruncateStream()).thenReturn(FileStream(output))
-        ImportExportManager(fileLocator).exportDatabase(sharedPreferences, storedFileHelper)
+        ImportExportManager(fileLocator).exportDatabase(
+            sharedPreferences,
+            expectedGeminiApiKey,
+            storedFileHelper
+        )
 
         val zipFile = ZipFile(output)
         val entries = zipFile.entries().toList()
-        assertEquals(3, entries.size)
+        assertEquals(4, entries.size)
 
         zipFile.getInputStream(entries.first { it.name == "newpipe.db" }).use { actual ->
             db.inputStream().use { expected ->
@@ -84,6 +89,18 @@ class ImportExportManagerTest {
             val actualPreferences = JsonParser.`object`().from(actual)
             assertEquals(expectedPreferences, actualPreferences)
         }
+
+        zipFile.getInputStream(entries.first { it.name == "gemini-subtitle-api-key" })
+            .use { actual ->
+                assertEquals(expectedGeminiApiKey, actual.reader().readText())
+            }
+
+        `when`(storedFileHelper.stream).then { FileStream(output) }
+        assertTrue(ImportExportManager(fileLocator).exportHasGeminiApiKey(storedFileHelper))
+        assertEquals(
+            expectedGeminiApiKey,
+            ImportExportManager(fileLocator).loadGeminiApiKey(storedFileHelper)
+        )
     }
 
     @Test

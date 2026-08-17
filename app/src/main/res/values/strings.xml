@@ -484,7 +484,7 @@
     <string name="gemini_subtitle_translation_enabled_title">Translate subtitles with Gemini</string>
     <string name="gemini_subtitle_translation_enabled_summary">Adds opt-in Gemini caption tracks. Selecting one sends that subtitle file to Google. Free-tier prompts may be used to improve Google products.</string>
     <string name="gemini_subtitle_api_key_title">Gemini API key</string>
-    <string name="gemini_subtitle_api_key_summary">Stored privately on this device and excluded from backups. Create a key in Google AI Studio.</string>
+    <string name="gemini_subtitle_api_key_summary">Stored privately on this device and included in NewPipe exports. Keep exported files private. Create a key in Google AI Studio.</string>
     <string name="gemini_subtitle_target_language_title">Translation language</string>
     <string name="gemini_subtitle_show_original_title">Show original captions above translation</string>
     <string name="gemini_subtitle_show_original_summary">Displays a bilingual subtitle track. Word-level color matching is not applied yet.</string>

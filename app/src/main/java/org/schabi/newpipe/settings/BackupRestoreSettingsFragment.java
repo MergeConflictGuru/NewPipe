@@ -27,6 +27,7 @@ import org.schabi.newpipe.error.ErrorInfo;
 import org.schabi.newpipe.error.ErrorUtil;
 import org.schabi.newpipe.error.UserAction;
 import org.schabi.newpipe.local.subscription.SubscriptionsImportExportHelper;
+import org.schabi.newpipe.player.subtitle.GeminiSubtitleSettings;
 import org.schabi.newpipe.settings.export.BackupFileLocator;
 import org.schabi.newpipe.settings.export.ImportExportManager;
 import org.schabi.newpipe.streams.io.NoFileManagerSafeGuard;
@@ -179,7 +180,8 @@ public class BackupRestoreSettingsFragment extends BasePreferenceFragment {
 
             final SharedPreferences preferences = PreferenceManager
                     .getDefaultSharedPreferences(requireContext());
-            manager.exportDatabase(preferences, file);
+            manager.exportDatabase(preferences,
+                    GeminiSubtitleSettings.getApiKey(requireContext()), file);
 
             saveLastImportExportDataUri(exportDataUri); // save export path only on success
             Toast.makeText(requireContext(), R.string.export_complete_toast, Toast.LENGTH_SHORT)
@@ -209,10 +211,12 @@ public class BackupRestoreSettingsFragment extends BasePreferenceFragment {
 
             // if settings file exist, ask if it should be imported.
             final boolean hasJsonPrefs = manager.exportHasJsonPrefs(file);
-            if (hasJsonPrefs || manager.exportHasSerializedPrefs(file)) {
+            final boolean hasSerializedPrefs = manager.exportHasSerializedPrefs(file);
+            final boolean hasGeminiApiKey = manager.exportHasGeminiApiKey(file);
+            if (hasJsonPrefs || hasSerializedPrefs || hasGeminiApiKey) {
                 new androidx.appcompat.app.AlertDialog.Builder(requireContext())
                         .setTitle(R.string.import_settings)
-                        .setMessage(hasJsonPrefs ? null : requireContext()
+                        .setMessage(hasJsonPrefs || !hasSerializedPrefs ? null : requireContext()
                                 .getString(R.string.import_settings_vulnerable_format))
                         .setOnDismissListener(dialog -> finishImport(importDataUri))
                         .setNegativeButton(R.string.cancel, (dialog, which) -> {
@@ -227,8 +231,16 @@ public class BackupRestoreSettingsFragment extends BasePreferenceFragment {
                             try {
                                 if (hasJsonPrefs) {
                                     manager.loadJsonPrefs(file, prefs);
-                                } else {
+                                } else if (hasSerializedPrefs) {
                                     manager.loadSerializedPrefs(file, prefs);
+                                }
+                                if (hasGeminiApiKey) {
+                                    final String geminiApiKey = manager.loadGeminiApiKey(file);
+                                    if (geminiApiKey == null
+                                            || !GeminiSubtitleSettings.setApiKey(
+                                            context, geminiApiKey)) {
+                                        throw new IOException("Unable to import Gemini API key");
+                                    }
                                 }
                             } catch (IOException | ClassNotFoundException | JsonParserException e) {
                                 createErrorNotification(e, "Importing preferences");
