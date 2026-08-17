@@ -5,6 +5,7 @@
 
 import com.android.build.api.dsl.ApplicationExtension
 import java.util.Properties
+import java.util.regex.Pattern
 
 plugins {
     alias(libs.plugins.android.application)
@@ -13,25 +14,20 @@ plugins {
     alias(libs.plugins.jetbrains.kotlin.parcelize)
     alias(libs.plugins.jetbrains.kotlinx.serialization)
     alias(libs.plugins.sonarqube)
+    alias(libs.plugins.about.libraries)
     checkstyle
 }
 val gitWorkingBranch = providers.exec {
     commandLine("git", "rev-parse", "--abbrev-ref", "HEAD")
 }.standardOutput.asText.map { it.trim() }
-val generatedBuildTimestampDirectory = layout.buildDirectory.dir("generated/source/buildTimestamp")
-val generateBuildTimestamp by tasks.registering(GenerateBuildTimestamp::class) {
-    outputDirectory.set(generatedBuildTimestampDirectory)
-    outputs.upToDateWhen { false }
-}
+val defaultBranches = listOf("master", "dev")
+val workingBranch = gitWorkingBranch.getOrElse("")
+val normalizedWorkingBranch = workingBranch
+    .replaceFirst("^[^A-Za-z]+".toRegex(), "")
+    .replace("[^0-9A-Za-z]+".toRegex(), "")
 
 kotlin {
     jvmToolchain(21)
-    compilerOptions {
-        // TODO: Drop annotation default target when it is stable
-        freeCompilerArgs.addAll(
-            "-Xannotation-default-target=param-property"
-        )
-    }
 }
 
 configure<ApplicationExtension> {
@@ -83,8 +79,14 @@ configure<ApplicationExtension> {
         debug {
             isDebuggable = true
 
-            applicationIdSuffix = ".debug"
-            resValue("string", "app_name", "NewPipe Debug")
+            // suffix the app id and the app name with git branch name
+            if (normalizedWorkingBranch.isEmpty() || workingBranch in defaultBranches) {
+                applicationIdSuffix = ".debug"
+                resValue("string", "app_name", "NewPipe Debug")
+            } else {
+                applicationIdSuffix = ".debug.$normalizedWorkingBranch"
+                resValue("string", "app_name", "NewPipe $workingBranch")
+            }
         }
 
         release {
@@ -99,6 +101,21 @@ configure<ApplicationExtension> {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+
+        register("continuous") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            isDefault = true
+
+            // suffix the app id and the app name with git branch name
+            if (normalizedWorkingBranch.isEmpty() || workingBranch in defaultBranches) {
+                applicationIdSuffix = ".continuous"
+                resValue("string", "app_name", "NewPipe Continuous")
+            } else {
+                applicationIdSuffix = ".continuous.$normalizedWorkingBranch"
+                resValue("string", "app_name", "NewPipe $workingBranch")
+            }
         }
     }
 
@@ -115,9 +132,6 @@ configure<ApplicationExtension> {
     }
 
     sourceSets {
-        getByName("main") {
-            java.directories.add(generatedBuildTimestampDirectory.get().asFile.path)
-        }
         getByName("androidTest") {
             assets.directories += "$projectDir/schemas"
         }
@@ -144,10 +158,6 @@ configure<ApplicationExtension> {
             )
         }
     }
-}
-
-tasks.named("preBuild") {
-    dependsOn(generateBuildTimestamp)
 }
 
 ksp {
@@ -230,6 +240,7 @@ dependencies {
     coreLibraryDesugaring(libs.android.desugar)
 
     // NewPipe libraries
+    implementation(projects.shared)
     implementation(libs.newpipe.nanojson)
     implementation(libs.newpipe.extractor)
     implementation(libs.newpipe.filepicker)
@@ -333,4 +344,21 @@ dependencies {
     androidTestImplementation(libs.androidx.runner)
     androidTestImplementation(libs.androidx.room.testing)
     androidTestImplementation(libs.assertj.core)
+}
+
+aboutLibraries {
+    collect {
+        configPath = file("../config/aboutlibraries")
+    }
+    export {
+        outputFile = file("../shared/src/androidMain/assets/aboutlibraries.json")
+        prettyPrint = true
+        excludeFields.addAll("organization", "scm", "funding")
+    }
+    library {
+        exclusionPatterns = listOf(
+            Pattern.compile("^com\\.github\\.TeamNewPipe:NewPipeExtractor$"),
+            Pattern.compile("^com\\.evernote:android-state$")
+        )
+    }
 }
